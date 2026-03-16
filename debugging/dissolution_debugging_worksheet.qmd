@@ -1,0 +1,74 @@
+---
+title: "Debugging Worksheet"
+format: html
+editor: source
+---
+
+## Goal
+
+Run the code. It crashes.
+
+Use a **breakpoint** to find the bug.
+
+------------------------------------------------------------------------
+
+## Find the Error (Dissolution Code Example)
+
+```{r}
+# Preliminaries
+library(tidyverse)
+data <- read_csv("dissolution_data.csv")
+
+# Standard curve parameters: A = slope * C (µg/mL) + intercept
+std_intercept <- -0.0002667 # absorbance units (y-intercept)
+```
+
+1.  Try run the code.
+2.  Insert `browser()` somewhere before the error occurs.
+3.  Find the line that should be added to fix the bug.
+
+```{r}
+data <- data %>%
+  mutate(
+    conc_mg_ml = ((absorbance - std_intercept) / std_slope) * diluton / 1000
+  )
+```
+------------------------------------------------------------------------
+
+## Understanding Code (Dissolution Code Example)
+
+```{r}
+# Preliminaries
+library(tidyverse)
+data <- read_csv("dissolution_data.csv")
+
+# Standard curve parameters: A = slope * C (µg/mL) + intercept
+std_slope     <- 0.04478    # absorbance units per µg/mL
+std_intercept <- -0.0002667 # absorbance units (y-intercept)
+```
+1. Clear the environment, the run the code block above.
+2. Insert `browser()` within the loop in the code block below & run it.
+3. Try out entering `n` to run the next line or `c`to run the code until the next `browser` in the Console to walk through the code.
+4. See how variable values change in the Environment window.
+5. Try understanding what the code does.
+
+```{r}
+small_data <- data[1:3, ]
+small_data$conc_mg_ml <- NA_real_
+
+# nrow(small_data) gives the number of rows in the table
+for (i in 1:nrow(small_data)) {
+  
+  browser()
+  
+  absorbance_i <- small_data$absorbance[i]
+  dilution_i   <- small_data$dilution[i]
+  
+  conc_i <- ((absorbance_i - std_intercept) / std_slope) * dilution_i / 1000
+  
+  small_data$conc_mg_ml[i] <- conc_i
+}
+
+small_data
+
+```
