@@ -1,0 +1,193 @@
+---
+title: "CodeClub3"
+format: html
+editor: visual
+---
+
+## Welcome! 👋
+We will look at some trial data where a drug (Lisinopril) for hypertension treatment is tested. There are 3 groups of patients: one gets 10 mg of Lisinopril, one gets 20 mg of Lisinopril, and one gets a placebo without a drug. 
+
+The effects (lowered blood pressure) is measured for every patient.
+
+
+------------------------------------------------------------------------
+
+## Step 1: Load packages
+
+```{r}
+# If you don't have tidyverse installed, run this once:
+# install.packages("tidyverse")
+
+library(tidyverse)
+```
+
+------------------------------------------------------------------------
+
+## Step 2: Load data
+Make sure your working directory is set correctly!
+
+```{r}
+library(readxl)
+
+study_data <- read_excel("bp_trial.xlsx")
+
+study_data
+```
+
+## Step 3: Plot the data
+
+### Does a bar chart makes sense here? Not really!
+
+```{r}
+ggplot(study_data, aes(x=treatment, y=bp_reduction_mmHg)) + 
+  geom_bar(stat = "identity")
+```
+### A scatterplot makes more sense!
+
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg)) +
+  geom_point()
+```
+### Compare both!The current bar chart setting just sums up all of the values per treatment group.
+```{r}
+ggplot(study_data, aes(x=treatment, y=bp_reduction_mmHg)) + 
+  geom_bar(stat = "identity") +
+  geom_point()
+```
+
+
+### Add theme minimal
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg)) +
+  geom_point() +
+  theme_minimal()
+```
+
+### Color the dots
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_point() +
+  theme_minimal()
+```
+### Change color map (might not be included in the live coding)
+```{r}
+# https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html
+# install.packages("viridis")
+library(viridis)
+
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_viridis(discrete=TRUE)
+```
+
+
+### Add labels
+
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_point() +
+  theme_minimal() +
+  labs(
+    title = "Blood Pressure Reduction by Treatment",
+    x     = "Treatment",
+    y     = "BP Reduction (mmHg)"
+    )
+```
+### Remove the legend
+
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_point() +
+  theme_minimal() +
+  labs(
+    title = "Blood Pressure Reduction by Treatment",
+    x     = "Treatment",
+    y     = "BP Reduction (mmHg)"
+    ) +
+  theme(legend.position = "none")
+```
+### Add some Jitter
+
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_jitter() +
+  theme_minimal() +
+  labs(
+    title = "Blood Pressure Reduction by Treatment",
+    x     = "Treatment",
+    y     = "BP Reduction (mmHg)"
+    ) +
+  theme(legend.position = "none")
+```
+### Add some derived values
+
+```{r}
+ggplot(study_data, aes(x = treatment, y = bp_reduction_mmHg, color = treatment)) +
+  geom_jitter() +
+  theme_minimal() +
+  labs(
+    title = "Blood Pressure Reduction by Treatment",
+    x     = "Treatment",
+    y     = "BP Reduction (mmHg)"
+    ) +
+  theme(legend.position = "none") +
+  stat_summary(
+      fun = mean,              # compute mean
+      geom = "point",          # plot as point
+      col = "black",
+      size = 3,
+      shape = 'square'
+  )
+```
+
+
+## Step 4: Write a function
+
+### Number of participants (rows)
+
+```{r}
+number_participants <- function(input_data) {
+  n_rows <- nrow(input_data) 
+  return(n_rows)
+}
+```
+
+```{r}
+number_participants(study_data)
+```
+### Add number of columns
+```{r}
+calculate_size <- function(data) {
+  n_rows <- nrow(data) 
+  n_cols <- ncol(data)
+  return(c(n_rows, n_cols))
+}
+```
+
+```{r}
+calculate_size(study_data)
+```
+
+### Why functions? To write less code!
+E.g., let's look at two different datasets
+```{r}
+study_data <- read_excel("bp_trial.xlsx")
+study_data_2 <- read_excel("bp_trial_v2.xlsx")
+```
+
+Without a function:
+```{r}
+nrow(study_data) 
+ncol(study_data)
+nrow(study_data_2) 
+ncol(study_data_2)
+```
+
+With a function we save two lines!:
+```{r}
+calculate_size(study_data)
+calculate_size(study_data_2)
+```
+
+
