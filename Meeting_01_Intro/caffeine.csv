@@ -1,0 +1,63 @@
+product,brand,category,serving_size_mL,caffeine_mg,sugar_g
+Brewed coffee,Generic,Coffee,237,96,0
+Brewed coffee (decaf),Generic,Coffee,237,2,0
+Espresso,Generic,Coffee,30,63,0
+Espresso (decaf),Generic,Coffee,30,1,0
+Instant coffee,Generic,Coffee,237,62,0
+Instant coffee (decaf),Generic,Coffee,237,2,0
+Pike Place Roast (Grande),Starbucks,Coffee,473,310,0
+Blonde Roast (Grande),Starbucks,Coffee,473,360,0
+Dark Roast (Grande),Starbucks,Coffee,473,260,0
+Cold Brew (Grande),Starbucks,Coffee,473,205,0
+Nitro Cold Brew (Grande),Starbucks,Coffee,473,280,0
+Brewed coffee (Medium),Dunkin',Coffee,414,210,0
+Iced coffee (Medium),Dunkin',Coffee,710,297,0
+Brewed coffee (Medium),McDonald's,Coffee,473,145,0
+Brewed coffee (Medium),Tim Hortons,Coffee,414,205,0
+Drip coffee,Death Wish Coffee,Coffee,240,472,0
+Black tea,Generic,Tea,237,47,0
+Black tea,Twinings,Tea,237,47,0
+Green tea,Generic,Tea,237,28,0
+Green tea,Twinings,Tea,237,28,0
+White tea,Generic,Tea,237,25,0
+Oolong tea,Generic,Tea,237,40,0
+Matcha (whisked),Generic,Tea,237,65,0
+Black tea (decaf),Generic,Tea,237,4,0
+Peppermint tea (herbal),Generic,Tea,237,0,0
+Bottled black tea (unsweetened),Lipton,Tea,237,26,0
+Original,Red Bull,Energy Drink,250,80,27
+Large,Red Bull,Energy Drink,473,151,51
+Original,Monster Energy,Energy Drink,473,160,54
+Ultra Zero Sugar,Monster Energy,Energy Drink,473,150,0
+Java Monster,Monster Energy,Energy Drink,443,188,35
+Original,Celsius,Energy Drink,355,200,0
+Heat,Celsius,Energy Drink,473,300,0
+Original,Bang Energy,Energy Drink,473,300,0
+Total Body Fuel,Reign,Energy Drink,473,300,0
+Energy,C4,Energy Drink,473,200,0
+Energy,Ghost,Energy Drink,473,200,0
+Original,Rockstar,Energy Drink,473,160,16
+Punched,Rockstar,Energy Drink,473,240,52
+Original,NOS,Energy Drink,473,160,52
+Energy shot,5-Hour Energy,Energy Drink,57,200,0
+Extra Strength shot,5-Hour Energy,Energy Drink,57,230,0
+Energy,PRIME,Energy Drink,355,200,0
+Energy,Alani Nu,Energy Drink,355,200,0
+Classic,Coca-Cola,Soda,355,34,39
+Diet,Coca-Cola,Soda,355,46,0
+Zero Sugar,Coca-Cola,Soda,355,34,0
+Original,Pepsi,Soda,355,38,41
+Zero Sugar,Pepsi,Soda,355,69,0
+Diet,Pepsi,Soda,355,35,0
+Original,Dr Pepper,Soda,355,41,40
+Original,Mountain Dew,Soda,355,54,46
+Baja Blast,Mountain Dew,Soda,355,54,46
+Root beer,Barq's,Soda,355,22,45
+Orange,Sunkist,Soda,355,19,44
+Original,Sprite,Soda,355,0,38
+Root beer,A&W,Soda,355,0,46
+Original,7-Up,Soda,355,0,38
+Hot cocoa,Generic,Hot Chocolate,237,9,22
+Hot chocolate mix,Swiss Miss,Hot Chocolate,237,5,11
+Dark hot chocolate (70% cacao),Generic,Hot Chocolate,237,20,15
+Chocolate milk,Generic,Hot Chocolate,237,5,22
