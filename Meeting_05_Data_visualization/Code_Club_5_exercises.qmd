@@ -1,0 +1,219 @@
+---
+title: "Exercises: Data Visualization"
+subtitle: "Pharma Code Club: Data Visualization"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-overflow: wrap
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Introduction {.unnumbered}
+
+Five exercises, from small and guided to open and explorative. Work directly in this document: write your code in the empty chunks and run them. There is no single right answer. Use the slides and the **ggplot2 tips** document (`Code_Club_5_ggplot_tips`) to look up functions and arguments.
+
+> **Tip:** Get something on the screen first, then improve it step by step.
+
+```{r}
+library(tidyverse)
+library(survival)   # comes with R; contains the datasets for exercise 2 and 5
+```
+
+------------------------------------------------------------------------
+
+# A calibration curve with its equation
+
+A UV calibration curve: absorbance measured for standards of known concentration.
+
+```{r}
+calibration <- tibble(
+  conc_ug_ml = c(2, 5, 10, 15, 20, 25),
+  absorbance = c(0.069, 0.158, 0.330, 0.487, 0.645, 0.808)
+)
+```
+
+**1a.** Fit a linear regression of absorbance against concentration, and show the data together with the fitted line. You decide how to draw the line.
+
+```{r}
+# your code here
+
+```
+
+**1b.** Add the equation of the line and the R² value to the plot, e.g. "y = 0.0322x + 0.0028, R² = 0.9998".
+
+> **Hint:** If you saved your model as `fit`, then `coef(fit)` gives the intercept and slope, `summary(fit)$r.squared` gives R². `paste()` and `round()` help you build the text.
+
+```{r}
+# your code here
+
+```
+
+**Extra:** give the axes proper titles with units, and make the line reach the y-axis so the intercept is visible.
+
+------------------------------------------------------------------------
+
+# Too many points: overplotting
+
+`flchain` is real data from a Mayo Clinic study of 7,874 people. Here we look at serum creatinine (a marker of kidney function) against age.
+
+```{r}
+kidney <- flchain %>%
+  select(age, sex, creatinine) %>%
+  drop_na()
+```
+
+| Column | Meaning |
+|---|---|
+| `age` | age in years (whole numbers) |
+| `sex` | F / M |
+| `creatinine` | serum creatinine (mg/dL), rounded to 0.1 |
+
+**2a.** Make a scatter plot of creatinine against age. Why is it hard to see how many people are behind each point?
+
+```{r}
+# your code here
+
+```
+
+**2b.** Try at least two ways to make the amount of data visible. Which one shows the pattern best?
+
+> **Hint:** Think about transparency, point size and shape, and `position_jitter()`. Be careful: jittering moves points away from their measured values, so how much is acceptable here? You can also look up `geom_count()` and `geom_bin_2d()`.
+
+```{r}
+# your code here
+
+```
+
+**Extra:** a few people have very high creatinine values. How could you focus on the bulk of the data without removing those points?
+
+------------------------------------------------------------------------
+
+# Makeover: from default to report-ready
+
+Dissolution test of six tablet formulations: percentage of drug released over time, three vessels per formulation.
+
+```{r}
+set.seed(11)
+dissolution <- expand_grid(formulation = paste0("F", 1:6),
+                           vessel = 1:3,
+                           time_min = c(0, 5, 10, 15, 20, 30, 45, 60)) %>%
+  mutate(k = c(F1 = 0.12, F2 = 0.08, F3 = 0.05, F4 = 0.10, F5 = 0.03, F6 = 0.06)[formulation],
+         released_pct = pmin(100, 100 * (1 - exp(-k * time_min)) + rnorm(n(), 0, 2.5)),
+         released_pct = pmax(0, released_pct)) %>%
+  select(-k)
+```
+
+This plot works, but it is not something you would put in a report:
+
+```{r}
+ggplot(dissolution, aes(x = time_min, y = released_pct, colour = formulation)) +
+  geom_point() +
+  geom_line(aes(group = interaction(formulation, vessel)))
+```
+
+**3a.** Make it report-ready. What is hard to read, and how would you fix it? You decide how far to take it.
+
+> **Hint:** Things to consider: Are six colours readable, or would `facet_wrap()` help? Your own colours with `scale_colour_manual()`. Axis titles with units. The legend: needed, and where? Should every vessel be its own line, or would the mean per formulation be clearer?
+
+```{r}
+# your code here
+
+```
+
+------------------------------------------------------------------------
+
+# Your own theme
+
+**4a.** Create your own theme function, `theme_mine()`, with the things you like. Start from a built-in theme and change a few elements with `theme()`.
+
+```{r}
+# your code here
+
+```
+
+**4b.** Apply it to your plots from exercise 1 to 3. Then make it the default for every plot with `theme_set()`.
+
+```{r}
+# your code here
+
+```
+
+**4c.** Save one of your plots with `ggsave()` at a size that fits a report (about 16 cm wide), both as PNG and as SVG. Open the PNG: is the text readable at that size?
+
+```{r}
+# your code here
+
+```
+
+Ideas to try in your theme:
+
+- a different font: `text = element_text(family = "serif")`
+- a frame around the panel: `panel.border = element_rect(fill = NA, colour = "black")`
+- longer or inward ticks: `axis.ticks.length = unit(-0.15, "cm")`
+- the facet labels: `strip.background`, `strip.text`
+
+------------------------------------------------------------------------
+
+# Explore a clinical trial dataset
+
+`pbc` is real data from a Mayo Clinic trial (1974 to 1984) of the drug **D-penicillamine** versus placebo in patients with primary biliary cirrhosis, a chronic liver disease. The code below keeps the 312 trial patients and turns the numeric codes into labelled factors.
+
+```{r}
+pbc_trial <- pbc %>%
+  filter(!is.na(trt)) %>%
+  mutate(trt   = factor(trt, levels = 1:2, labels = c("D-penicillamine", "Placebo")),
+         sex   = factor(sex, levels = c("m", "f"), labels = c("Male", "Female")),
+         stage = factor(stage),
+         edema = factor(edema, levels = c(0, 0.5, 1),
+                        labels = c("None", "Untreated or resolved", "Despite diuretics")))
+```
+
+| Column | Meaning |
+|---|---|
+| `time` | days from the start of the trial until death, liver transplant or the end of follow-up |
+| `status` | what happened at `time`: 0 = still alive at the end, 1 = liver transplant, 2 = died |
+| `trt` | treatment: D-penicillamine or placebo |
+| `age` | age in years |
+| `sex` | male / female |
+| `stage` | histologic stage of the disease, 1 (early) to 4 (advanced) |
+| `edema` | oedema: none, untreated or resolved, despite diuretics |
+| `ascites`, `hepato`, `spiders` | presence of ascites, enlarged liver, spider angiomas (0 = no, 1 = yes) |
+| `bili` | serum bilirubin (mg/dL) |
+| `albumin` | serum albumin (g/dL) |
+| `chol` | serum cholesterol (mg/dL) |
+| `copper` | urine copper (µg/day) |
+| `alk.phos` | alkaline phosphatase (U/L) |
+| `ast` | aspartate aminotransferase (U/mL) |
+| `platelet` | platelet count |
+| `protime` | prothrombin time (blood clotting time, s) |
+
+`time` and `status` are the outcome of the trial. Analysing them properly needs survival analysis, which is a topic of its own, so today you can focus on the other variables (or, for example, count how many died in each group).
+
+**5a.** Which variables are continuous, discrete, nominal or ordinal? It decides which plots make sense.
+
+**5b.** Pick two or three questions and make a plot for each. Some ideas:
+
+- Does bilirubin increase with disease stage?
+- How are albumin and bilirubin related, and does it differ between the treatment groups?
+- Are the patients in the two treatment groups comparable, e.g. in age, sex and disease stage? (Randomisation should make them so; if not, a difference in outcome could be due to the patients rather than the drug.)
+- Your own question
+
+> **Hint:** Look at the distribution of a variable first, e.g. with a histogram. Some lab values are very skewed: what does a log scale do? For an ordinal variable like `stage`, which plot shows a trend across the levels?
+
+```{r}
+# your code here
+
+```
+
+**5c.** Choose your best plot and make it report-ready, using everything from today.
+
+```{r}
+# your code here
+
+```

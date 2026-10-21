@@ -1,0 +1,435 @@
+---
+title: "ggplot2 Tips: Making Your Plots Report-Ready"
+subtitle: "Pharma Code Club: Data Visualization"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-overflow: wrap
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Introduction {.unnumbered}
+
+This document follows the slides from today's session. It is meant as a **lookup guide**: each section shows one thing you can change in a ggplot, a short table of the most useful arguments, and a code chunk you can run and play with.
+
+> **Tip:** Change one argument at a time and re-run the chunk. That is the fastest way to see what it does.
+
+------------------------------------------------------------------------
+
+# Setup
+
+We only need the tidyverse (which includes ggplot2). All data is simulated below, so this document runs on its own. `theme_set(theme_classic(base_size = 14))` makes the classic theme with slightly larger text (14 pt) the default for all plots instead of the grey one (more on this in the section on global defaults).
+
+```{r}
+library(tidyverse)
+theme_set(theme_classic(base_size = 14))
+
+set.seed(5)
+# Tablet weight vs. amount of active ingredient
+tablet_dose <- tibble(weight_mg = rnorm(120, 505, 16),
+                      dose_mg   = 250 + 0.5 * (weight_mg - 500) + rnorm(120, 0, 7))
+
+set.seed(8)
+# Same, but for three production batches (batch C has a lower content)
+tablet_batches <- tibble(batch     = rep(c("A", "B", "C"), each = 30),
+                         weight_mg = rnorm(90, rep(c(500, 505, 495), each = 30), 10),
+                         dose_mg   = rep(c(0.50, 0.50, 0.47), each = 30) * weight_mg +
+                                     rnorm(90, 0, 4))
+
+set.seed(3)
+# Substrate uptake by a transporter (Michaelis-Menten)
+uptake <- expand_grid(conc_um = c(0, 5, 10, 25, 50, 100, 200, 400), replicate = 1:3) %>%
+  mutate(rate = 120 * conc_um / (30 + conc_um) * rnorm(n(), 1, 0.07))
+```
+
+We store the basic plots as objects (`p`, `p_batch`, `p_mm`) and add to them in the sections below.
+
+```{r}
+p <- ggplot(tablet_dose, aes(x = weight_mg, y = dose_mg)) +
+  geom_point()
+
+p_batch <- ggplot(tablet_batches, aes(x = weight_mg, y = dose_mg, colour = batch)) +
+  geom_point()
+
+p_mm <- ggplot(uptake, aes(x = conc_um, y = rate)) +
+  geom_point()
+```
+
+------------------------------------------------------------------------
+
+# Linear fit: `geom_smooth()`
+
+`geom_smooth(method = "lm")` fits and draws a straight line (a linear model).
+
+| Argument | What it does |
+|---|---|
+| `method = "lm"` | straight line; without it you get a wiggly smooth curve (loess) |
+| `se = FALSE` | removes the grey band (the 95% confidence interval of the line) |
+| `fullrange = TRUE` | extends the line to the edges of the plot: **extrapolation**, mention it in the caption |
+| `colour`, `linetype`, `linewidth` | the look of the line |
+| `data = ...` | fit on a subset, e.g. without an outlier, while still showing all points |
+
+```{r}
+p + geom_smooth(method = "lm", se = FALSE,
+                colour = "black", linetype = "dashed", linewidth = 1)
+```
+
+**Line types:** `"solid"`, `"dashed"`, `"dotted"`, `"dotdash"`, `"longdash"`, `"twodash"`. The same `colour`, `linetype` and `linewidth` arguments work for all line geoms in this document.
+
+------------------------------------------------------------------------
+
+# Your own lines
+
+| Function | What it draws |
+|---|---|
+| `geom_abline(intercept, slope)` | a straight line from a known intercept and slope; always spans the whole plot |
+| `geom_function(fun = ...)` | any function of x, also nonlinear |
+
+```{r}
+fit <- lm(dose_mg ~ weight_mg, data = tablet_dose)
+
+p + geom_abline(intercept = coef(fit)[1], slope = coef(fit)[2])
+```
+
+`geom_function()` does not use your data: it takes the x-range of the plot, calculates `fun(x)` at 101 points and draws a line through them. `\(x)` is short for `function(x)`; `x` is just a placeholder, not a column.
+
+```{r}
+mm_fit <- nls(rate ~ Vmax * conc_um / (Km + conc_um), data = uptake,
+              start = list(Vmax = 100, Km = 20))
+Vmax <- coef(mm_fit)["Vmax"]
+Km   <- coef(mm_fit)["Km"]
+
+p_mm + geom_function(fun = \(x) Vmax * x / (Km + x))
+```
+
+> **Tip:** `xlim = c(0, 200)` inside `geom_function()` draws only part of the curve, and `n = 500` makes it smoother.
+
+------------------------------------------------------------------------
+
+# Reference lines and text
+
+| Function | What it does |
+|---|---|
+| `geom_hline(yintercept = ...)` | horizontal line at a fixed value |
+| `geom_vline(xintercept = ...)` | vertical line at a fixed value |
+| `annotate("text", x, y, label)` | one label at a position in axis units |
+| `hjust = 0` / `1` | left / right-align the text at x |
+
+```{r}
+r2 <- summary(fit)$r.squared
+
+p + geom_smooth(method = "lm", se = FALSE) +
+  geom_hline(yintercept = 250, linetype = "dashed") +
+  annotate("text", x = 470, y = 280, hjust = 0,
+           label = paste("R² =", round(r2, 2)))
+```
+
+------------------------------------------------------------------------
+
+# Axes: `scale_x_continuous()` and `scale_y_continuous()`
+
+| Argument | What it does |
+|---|---|
+| `limits = c(0, 200)` | range of the axis. **Data outside is removed** (see the warning "Removed n rows") |
+| `breaks = seq(0, 400, by = 50)` | where the tick marks are |
+| `expand = c(0, 0)` | removes the air between data and axes |
+
+```{r}
+p_mm +
+  scale_x_continuous(limits = c(0, 400), breaks = seq(0, 400, by = 50),
+                     expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 130), expand = c(0, 0))
+```
+
+> **Tip:** `expand = expansion(mult = c(0, 0.05))` controls each side: no air at the bottom, 5% at the top.
+
+## Log scale
+
+`scale_x_log10()` / `scale_y_log10()` take the same arguments. `annotation_logticks()` adds small log ticks, so values are easier to read off. Log of 0 is not possible, so remove 0 values first.
+
+```{r}
+uptake %>%
+  filter(conc_um > 0) %>%
+  ggplot(aes(x = conc_um, y = rate)) +
+  geom_point() +
+  scale_x_log10(breaks = c(1, 10, 100, 1000), limits = c(1, 1000)) +
+  annotation_logticks(sides = "b")   # "b" = bottom, "l" = left
+```
+
+------------------------------------------------------------------------
+
+# Zoom: `coord_cartesian()`
+
+`coord_cartesian()` zooms **without removing data**, so calculations like a fitted line stay the same. It has fewer options than `scale_*()`: for breaks and labels you still need the scale.
+
+| Argument | What it does |
+|---|---|
+| `xlim`, `ylim` | zoom range |
+| `expand = FALSE` | no air around the data |
+| `clip = "off"` | points on the edge are drawn in full |
+
+```{r}
+p_fit <- p + geom_smooth(method = "lm", se = FALSE)
+
+p_fit + scale_x_continuous(limits = c(490, 510))   # removes data: the line changes
+p_fit + coord_cartesian(xlim = c(490, 510))         # zooms: the line stays the same
+```
+
+> **Note:** With `clip = "off"` and a zoom, data outside the limits is drawn over the axes. Only use it when the limits contain all your data.
+
+------------------------------------------------------------------------
+
+# Split groups: `facet_wrap()`
+
+When colours alone get cluttered, give each group its own panel.
+
+| Argument | What it does |
+|---|---|
+| `~ batch` | the variable to split by |
+| `ncol`, `nrow` | layout of the panels |
+| `scales = "free_y"` | each panel its own y-axis (harder to compare!) |
+
+```{r}
+ggplot(tablet_batches, aes(x = weight_mg, y = dose_mg)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ batch, ncol = 3)
+```
+
+------------------------------------------------------------------------
+
+# Colours
+
+Four ways to write the same colour:
+
+| You write | Type |
+|---|---|
+| `"steelblue"` | name (`colors()` lists all 657) |
+| `"#4682B4"` | hex code |
+| `rgb(70, 130, 180, max = 255)` | RGB, 0 to 255 |
+| `hsv(0.576, 0.611, 0.706)` | HSV, 0 to 1 |
+
+**One colour for everything:** set it *outside* `aes()`.
+
+```{r}
+p + geom_point(colour = "#4682B4")
+```
+
+**Your own palette for groups:** `scale_colour_manual()` (or `scale_fill_manual()` for bars and boxes). An unnamed vector is used in the order of the groups; a named vector gives each group a fixed colour in every plot.
+
+```{r}
+my_cols <- c(A = "#E69F00", B = "#56B4E9", C = "#009E73")
+
+p_batch + scale_colour_manual(values = my_cols)
+```
+
+------------------------------------------------------------------------
+
+# Axis titles with units and symbols
+
+`labs()` sets all titles. Simple symbols can be typed directly (`"Concentration (µM)"`). For sub- and superscripts use `expression()`, which is R code drawn as maths:
+
+| You write | You get |
+|---|---|
+| `mu`, `Delta` | µ, Δ (Greek letters by name) |
+| `C[max]` | C~max~ (subscript) |
+| `min^-1` | min^-1^ (superscript) |
+| `%.%` | · (multiplication dot) |
+| `*`, `~` | join pieces without / with a space |
+| `"text"` | text with spaces or brackets goes in quotes |
+
+```{r}
+p_mm + labs(
+  x = "Concentration (µM)",
+  y = expression("Uptake (pmol" %.% min^-1 %.% mg^-1 * ")"))
+```
+
+
+------------------------------------------------------------------------
+
+# The legend
+
+| Code | What it does |
+|---|---|
+| `labs(colour = "Batch")` | change the legend title (use `fill`, `shape`, ... for those legends) |
+| `labs(colour = NULL)` | no legend title |
+| `theme(legend.position = "bottom")` | `"right"` (default), `"left"`, `"top"`, `"bottom"`, `"none"` |
+| `theme(legend.position = "inside", legend.position.inside = c(0.15, 0.8))` | inside the plot; numbers from 0 to 1 (left to right, bottom to top) |
+
+```{r}
+p_batch +
+  labs(colour = "Batch") +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.15, 0.8))
+```
+
+> **Note:** `"inside"` needs ggplot2 3.5 or newer. In older versions: `theme(legend.position = c(0.15, 0.8))`.
+
+------------------------------------------------------------------------
+
+# Themes
+
+## Built-in and package themes
+
+All themes take `base_size`, the text size in points: `theme_classic(base_size = 14)`.
+
+| Theme | Look |
+|---|---|
+| `theme_grey()` | default, grey panel |
+| `theme_bw()` | white panel with a frame |
+| `theme_classic()` | axis lines, no grid |
+| `theme_minimal()` | grid only |
+| `theme_prism()` (ggprism) | GraphPad Prism look |
+| `theme_pubr()` (ggpubr) | publication style |
+| `theme_few()`, `theme_economist()` (ggthemes) | clean / The Economist style |
+
+```{r}
+p_batch + theme_bw(base_size = 14)
+```
+
+Package themes need the package: install it once, then load it with `library()`.
+
+```{r}
+# install.packages("ggprism")   # run once (remove the # first)
+library(ggprism)
+p_batch + theme_prism()
+```
+
+## Change details with `theme()`
+
+Every part of the plot has a name (the *element*), and a function says *how* to change it:
+
+| Element | Function |
+|---|---|
+| `axis.title`, `axis.text` | `element_text(size, face, colour)` |
+| `axis.line`, `panel.grid.major`, `panel.grid.minor` | `element_line(colour, linewidth)` |
+| `panel.background`, `panel.border` | `element_rect(fill, colour)` |
+| `legend.title`, `axis.ticks` | `element_blank()` removes it |
+
+Add `.x` or `.y` to change one axis only, e.g. `panel.grid.major.y`. Put `theme()` **after** the base theme, otherwise the base theme overwrites your changes.
+
+```{r}
+p_batch +
+  theme_classic() +
+  theme(axis.title = element_text(face = "bold"),
+        panel.grid.major.y = element_line(colour = "grey90"))
+```
+
+> **Tip:** Type `theme(` and press Tab in RStudio to see all elements.
+
+## Save your own theme
+
+```{r}
+theme_mine <- function(base_size = 12) {
+  theme_classic(base_size = base_size) +
+    theme(axis.title = element_text(face = "bold"),
+          panel.grid.major.y = element_line(colour = "grey90"),
+          legend.position = "top")
+}
+
+p_batch + theme_mine()
+```
+
+------------------------------------------------------------------------
+
+# Set it once: global defaults
+
+Put this at the top of a script or Quarto document, and every plot after it uses these settings.
+
+| Code | Sets the default for |
+|---|---|
+| `theme_set(theme_mine())` | theme |
+| `options(ggplot2.discrete.colour = ..., ggplot2.discrete.fill = ...)` | colours for groups (use an unnamed vector) |
+| `update_geom_defaults("point", list(size = 2.5))` | the look of one geom |
+| redefine `scale_y_continuous` (below) | scale settings, e.g. no air |
+
+```{r}
+theme_set(theme_mine())
+options(ggplot2.discrete.colour = c("#E69F00", "#56B4E9", "#009E73"))
+update_geom_defaults("point", list(size = 2.5))
+scale_y_continuous <- function(..., expand = c(0, 0)) {
+  ggplot2::scale_y_continuous(..., expand = expand)
+}
+
+ggplot(tablet_batches, aes(x = weight_mg, y = dose_mg, colour = batch)) +
+  geom_point() +
+  coord_cartesian(clip ="off")
+```
+
+`ggplot2::` in the last part is needed: it calls the original function, not the new one we are defining. To undo the defaults again (back to the classic theme from the setup):
+
+```{r}
+theme_set(theme_classic(base_size = 14))
+options(ggplot2.discrete.colour = NULL)
+update_geom_defaults("point", list(size = 1.5))
+rm(scale_y_continuous)
+```
+
+------------------------------------------------------------------------
+
+# Size and saving
+
+## Readable text
+
+A plot that looks fine in RStudio can end up with tiny text in a report. Decide the final size first: the text width of an A4 page is about 16 cm (6.3 inches). Then set `base_size` to roughly the font size of your report (10 to 12 pt).
+
+## In Quarto
+
+| Chunk option | What it does |
+|---|---|
+| `#| fig-width: 6.3` | width of the canvas R draws on, in inches |
+| `#| fig-height: 4` | height in inches |
+| `#| out-width: "80%"` | how big the finished picture is shown; text shrinks or grows with it |
+
+```{r}
+#| fig-width: 6.3
+#| fig-height: 4
+p_batch
+```
+
+## Export with `ggsave()`
+
+| Argument | What it does |
+|---|---|
+| `"name.png"` | file name; the extension sets the type: `.png`, `.pdf`, `.svg`, `.jpg` |
+| `plot = p` | which plot; without it, the last plot you made |
+| `width`, `height`, `units` | size, with `units = "cm"`, `"mm"` or `"in"` |
+| `dpi = 300` | resolution for PNG/JPG (300 for print) |
+
+```{r}
+#| eval: false
+ggsave("dose_plot.png", plot = p_batch, width = 16, height = 10, units = "cm", dpi = 300)
+ggsave("dose_plot.svg", plot = p_batch, width = 16, height = 10, units = "cm")
+```
+
+**SVG** is a vector format: sharp at any size, and you can open it in [Inkscape](https://inkscape.org) (free) to change text or move elements. Use this only for final touches: changes are lost when the code runs again. `ggsave()` needs the svglite package to save .svg files. If R says it is missing, run `install.packages("svglite")` once.
+
+------------------------------------------------------------------------
+
+# Where to go next
+
+Two packages built on ggplot2, with other ways to make plots and statistical comparisons:
+
+- **ggpubr** ([rpkgs.datanovia.com/ggpubr](https://rpkgs.datanovia.com/ggpubr/)): ready-made publication plots and p-values on plots. We used it in Code Club 4 (`ggboxplot()` + `stat_compare_means()`).
+- **tidyplots** ([tidyplots.org](https://tidyplots.org)): build a plot step by step with the pipe.
+
+`study` is a small example dataset that comes with tidyplots, so the code below runs once the package is installed.
+
+```{r}
+#| eval: false
+# install.packages("tidyplots")   # run once (remove the # first)
+library(tidyplots)
+study %>%
+  tidyplot(x = treatment, y = score, color = treatment) %>%
+  add_boxplot() %>%
+  add_test_pvalue(ref.group = 1)
+```
+
+Both are built on ggplot2. In ggpubr you can add layers and themes with `+` as usual; in tidyplots you add ggplot2 code with `add()`, e.g. `add(theme_bw())`.
